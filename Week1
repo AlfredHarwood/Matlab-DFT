@@ -1,0 +1,179 @@
+%% Phase 1 - Introduction
+% Before we could start solving quantum mechanical problems, we needed a
+% method of solving differential equations discretely. This would allow
+% functions to be represented as vectors and operators to be represented as
+% matrices [Garcia et al., 2007].
+%
+% Note: throughout, when considering the Hamiltonian, we are working in
+% atomic units - and so we set hbar and m to both equal one.
+%
+%% Defining Discrete Differential Operators
+% First, we experimented with disrete differential operators. We defined a
+% coordinate x, as a column vector using the linspace function. By setting
+% the number of points as a variable, we were able to increase or decrease
+% the accuracy of the approximation. This would be useful later on when
+% longer calculations would require a compromise between accuracy and time.
+%%
+% We defined a first derivative operator using the central approximation.
+% When this matrix is applied to a function (in the form of a column
+% vector), it replaces the ith point in the function f(x_i) with
+%
+% $$ \frac{f(x_{i+1})-f(x_{i-1})}{2dx} $$
+% 
+% where dx is the x-distance between two
+% adjacent points.
+%%
+% We then tested this first derivative operator on a simple function and
+% plotted the results. We found that it worked well apart from at the
+% endpoints, where the central approximation is not well defined, so the
+% curve becomes discontinuous.
+ 
+%% Infinite Square Well - 1D
+% Once we had the basic tools to differentiate discretely, we attempted a
+% simple quantum mechanics problem - the 1D infinte square well of length 
+% L. This required us to define a second differential - the 1D Laplacian. 
+% We decided to do this using the forward approximation, as we hoped that 
+% this would resolve the problem we encountered at the endpoints. To 
+% satisfy the  boundary conditions of the problem, we set the top left and 
+% bottom right componenents of the Laplacian matrix to zero. Multiplying 
+% this matrix by the constant -hbar^2/2m gave us the Hamiltonian in zero 
+% potential.
+clc 
+clear
+N = 500; L = 1; x = linspace(0, L, N)';     %Re-define constants  
+dx = x(2) - x(1)  ;      
+  
+% Define the 1D finite difference Laplacian (second derivative)
+D2 = (1/(dx^2))*(-2*diag(ones(N,1),0) + diag(ones((N-1),1),1) + diag(ones((N-1),1),-1));
+  
+%Add boundary conditions
+D2(1,1) = 0; D2(1,2) = 0; D2(2,1) = 0;
+D2(N,N-1) = 0; D2(N-1,N) = 0; D2(N,N) = 0;  
+  
+%Define Hamiltonian matrix inside the box where V=0
+H = (-0.5)*D2;
+ 
+%%
+% Once we had a Hamiltonian operator matrix, all that was required was to
+% find its eigenfunctions and eigenvalues. We did this using the built-in
+% Matlab function eig which returns a matrix whose columns are the
+% eigenvectors and a matrix whose diagonals are the eigenvalues. In our
+% case, these were the energy eigenfunctions and eigenvalues.
+ 
+%%
+% We found that this method gave eigenfunctions whose amplitudes changed 
+% depending on N - the number of steps we used to approximate the 
+% functions. This is obviously unphysical, since the outcome should not
+% depend on the nature of the approximation. We found that, in order to
+% normalise the wavefunctions, we needed to multiply them by N^(0.5).
+ 
+[Efns, E] = eig(H);
+% E = matrix whose diagonals are eigenvalues
+% Efns = Matrix whose columns are eigenvectors
+ 
+% Normalising the function  
+Efns = Efns/sum(trapz(Efns));
+  
+%%
+% Since the parameters have been chosen arbitrarily, there is no great
+% significance in the values of the energy eigenvalues, however, we can
+% check that the eigenfunctions are qualitatively what we expect them to be
+% by plotting them. 
+%%
+% The eig function gives the first two eigenvectors as being the trivial
+% solution [0 0 0 ....]. Though this is techically a solution, it is not
+% normalisable and it therefore unphysical, so we have not plotted it.
+ 
+hold on
+ 
+subplot(2,2,1)
+plot(x, Efns(:,3), '.')
+title('Ground state')
+xlabel('x') 
+ylabel('\psi (x)')
+ 
+for i = 2:4
+    subplot(2,2,i)
+    plot(x, Efns(:,i+2), '.')
+    title(['Excited State ' , num2str(i-1)])
+    xlabel('x') 
+    ylabel('\psi (x)')
+end
+hold off
+ 
+%% 2D Particle in a box
+% We then extended the technique to solve the Schrodinger equation for a 2D
+% particle in a box. This was a simple extension, since the equation can be
+% solved using separation of variables, so the 2D solution is simply the
+% product of the two 1D solutions.
+%
+% In order to solve the time-independent Schrodinger equation for a 2D
+% system, we are required to separate variables. In our system, this means
+% saying:
+%
+% $$ \psi(x,y) = X(x)\times Y(y) $$
+%
+% We use a similar logic when computing the 3D particle in a box system, as
+% detailed later on.
+% 
+% Through separation of variables, we can solve the TISE in the x and y
+% directions separately and then multiply the resulting eigenfunctions to
+% get the 2D solutions [Tanner, 1991].
+ 
+%% 1D Harmonic Potential Well
+% Having solved the Schrodinger equation with no potential, we now moved on
+% to adding a simple harmonic potential. Since it needed to be added to the
+% Hamiltonian matrix, it must be a diagonal matrix. This was achieved using
+% the matlab diag function [Szabo et al., 1996].
+clc
+clear
+%Defining variables + constants
+N = 1000;                            %No. of points
+L = 1;                               %Range of x
+x = linspace(-L, L, N)';             %Column Vector of x values
+dx = x(2) - x(1);
+  
+%defining 2nd derivative (1D Laplacian)operator:
+D2 = (1/(dx^2))*(-2*diag(ones(N,1),0) + diag(ones((N-1),1),1) + diag(ones((N-1),1),-1));
+  
+% We need to turn the potential into a matrix, so that it can be added to
+% the Hamiltonian. As it is a list of values for different x coordinates,
+% its matrix is a matrix with its values down the diagonal and all other
+% elements are zero.
+  
+V = diag(700*x.^2);               %Harmonic potential
+  
+% Defining the Hamiltonian:
+H = (-0.5)*D2 + V;
+  
+% Extracting eigenvalues and eigenfunctions, using the same names as before
+[Efns,E] = eig(H);
+ 
+% Normalising the function 
+Efns = Efns/sum(trapz(Efns));
+ 
+% Plotting first few eigenfunctions
+ 
+subplot(2,2,1)
+plot(x, Efns(:,1), '.') 
+title({'Quantum Harmonic Oscillator' 'Ground State'})
+xlabel('x') 
+ylabel('\psi (x)')
+ 
+for i = 2:4
+    subplot(2,2,i)
+    plot(x, Efns(:,i), '.') 
+    title({'Quantum Harmonic Oscillator', ['Excited State ',num2str(i-1)]})
+    xlabel('x') 
+    ylabel('\psi (x)')
+end
+%%
+% [1] R. Garcia, A. Zozulya, and J. Stickney, MATLAB codes for teaching 
+% quantum physics: Part 1, vol. 1609, pp. 17, 2007.
+% 
+% [2] A. C. Tanner, "The role of boundary-conditions in separation of
+% variables - Quantum oscillator in a box," vol. 59, pp. 333-335, 1991.
+% 
+% [3] A. Szabo and N. S. Ostlund, "Modern Quantum Chemistry: Introduction
+% to Advanced Electronic Structure Theory", Dover Books on Chemistry, 
+% pp. 15-34, 1996.
